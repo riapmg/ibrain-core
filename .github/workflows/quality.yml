@@ -1,0 +1,50 @@
+name: iBrain Core Ruby quality
+
+on:
+  push:
+    branches:
+      - master
+      - 'ci/**'
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gem-smoke:
+    name: Ruby syntax and gem packaging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+
+      - name: Check Ruby syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find app config db lib -type f -name '*.rb' | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Ruby source files found."
+            exit 1
+          fi
+          for file in "${files[@]}"; do
+            ruby -c "$file"
+          done
+
+      - name: Build gem package
+        run: gem build ibrain-core.gemspec
+
+      - name: Verify gem package exists
+        run: test -s ibrain-core-*.gem
