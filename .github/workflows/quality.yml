@@ -43,6 +43,9 @@ jobs:
             ruby -c "$file"
           done
 
+      - name: Run focused unit tests
+        run: ruby -Itest test/ibrain_user_api_authentication_test.rb
+
       - name: Build gem package
         run: gem build ibrain-core.gemspec
 
