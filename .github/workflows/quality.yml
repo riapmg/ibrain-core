@@ -17,9 +17,13 @@ permissions:
 
 jobs:
   gem-smoke:
-    name: Ruby syntax and gem packaging
+    name: Ruby ${{ matrix.ruby-version }} syntax, tests and gem packaging
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.2', '3.3']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +31,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: false
 
       - name: Check Ruby syntax
@@ -43,8 +47,18 @@ jobs:
             ruby -c "$file"
           done
 
-      - name: Run focused unit tests
-        run: ruby -Itest test/ibrain_user_api_authentication_test.rb
+      - name: Run all focused unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(find test -type f -name '*_test.rb' | sort)
+          if [ "${#tests[@]}" -eq 0 ]; then
+            echo "No Ruby test files found."
+            exit 1
+          fi
+          for test_file in "${tests[@]}"; do
+            ruby -Itest "$test_file"
+          done
 
       - name: Build gem package
         run: gem build ibrain-core.gemspec
