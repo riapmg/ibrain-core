@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require "securerandom"
 require_relative "../app/models/concerns/ibrain/user_api_authentication"
 
 class IbrainUserApiAuthenticationTest < Minitest::Test
