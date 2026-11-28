@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "securerandom"
+
 module Ibrain
   module UserApiAuthentication
     def generate_ibrain_api_key!

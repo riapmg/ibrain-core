@@ -17,17 +17,21 @@ permissions:
 
 jobs:
   gem-smoke:
-    name: Ruby syntax and gem packaging
+    name: Ruby ${{ matrix.ruby-version }} syntax, tests and gem packaging
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.2', '3.3']
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: false
 
       - name: Check Ruby syntax
@@ -43,8 +47,33 @@ jobs:
             ruby -c "$file"
           done
 
+      - name: Run all focused unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(find test -type f -name '*_test.rb' | sort)
+          if [ "${#tests[@]}" -eq 0 ]; then
+            echo "No Ruby test files found."
+            exit 1
+          fi
+          for test_file in "${tests[@]}"; do
+            ruby -Itest "$test_file"
+          done
+
       - name: Build gem package
         run: gem build ibrain-core.gemspec
 
       - name: Verify gem package exists
         run: test -s ibrain-core-*.gem
+
+      - name: Verify API-key concern is included in the gem
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="$(find . -maxdepth 1 -type f -name 'ibrain-core-*.gem' -print -quit)"
+          test -n "$package"
+          temp_dir="$(mktemp -d)"
+          gem unpack "$package" --target "$temp_dir"
+          concern="$(find "$temp_dir" -type f -path '*/app/models/concerns/ibrain/user_api_authentication.rb' -print -quit)"
+          test -n "$concern"
+          test -s "$concern"
